@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+fastapi-jwt-auth
+odmantic
+pydantic[email]
+passlib[bcrypt]
