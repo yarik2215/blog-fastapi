@@ -19,7 +19,7 @@ async def list_users(Authorize: AuthJWT = Depends()):
 
 @router.get('/{username}', response_model=UserInfo)
 async def read_user(username: str):
-    user = await engine.find_one(User.username == username)
+    user = await engine.find_one(User, User.username == username)
     if user is None:
         raise HTTPException(404)
     return user

@@ -14,7 +14,7 @@ class User(Model):
     password: str
     last_login: Optional[datetime] = None
     last_request: Optional[datetime] = None
-    registration_data: datetime = datetime.now()
+    registration_date: datetime = datetime.now()
     super_user: bool = False
     deleted: bool = False
 

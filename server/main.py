@@ -33,6 +33,10 @@ app.include_router(
 )
 
 
+@app.get('/ping')
+def ping_pong():
+    return 'pong'
+
 
 @app.exception_handler(AuthJWTException)
 def authjwt_exception_handler(request: Request, exc: AuthJWTException):

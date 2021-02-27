@@ -1,13 +1,16 @@
-from ..settings import engine, MIN_PASSWORD_LENGTH
-from ..models.user import User
+import asyncio
 
+from server.settings import engine, MIN_PASSWORD_LENGTH
+from server.models.user import User
 
-def create_user():
+loop = asyncio.get_event_loop()
+
+async def create_user():
     email = input('email: ')
-    if engine.find(User, User.email == email):
+    if await engine.find(User, User.email == email):
         raise ValueError('Email already exists')
     username = input('username: ')
-    if engine.find(User, User.username == username):
+    if await engine.find(User, User.username == username):
         raise ValueError('This username already exists')
     password = input('password: ')
     if len(password) < MIN_PASSWORD_LENGTH:
@@ -15,15 +18,19 @@ def create_user():
     user = User(
         username=username,
         email=email,
-        super_user = True
+        super_user = True,
+        password=password,
     )
     user.set_password(password)
-    engine.save(user)
+    user = await engine.save(user)
     print('Done')
+    print(user)
 
 
 if __name__ == '__main__':
     try:
-        create_user()
+        loop.run_until_complete(create_user())
     except ValueError as e:
         print(f'Error: {e}')
+    finally:
+        pass

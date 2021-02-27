@@ -10,7 +10,7 @@ from .dependencies import get_admin_user
 
 
 router = APIRouter(
-    # dependencies=[Depends(get_admin_user)]
+    dependencies=[Depends(get_admin_user)]
 )
 
 class DateFilter():
