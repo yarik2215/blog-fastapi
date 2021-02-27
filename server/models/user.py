@@ -4,8 +4,8 @@ from pydantic import BaseModel, EmailStr, Field, validator
 from odmantic import Model
 from odmantic.bson import ObjectId
 
-from ..utils.security import hash_password, verify_password
-from ..settings import MIN_PASSWORD_LENGTH
+from server.utils.security import hash_password, verify_password
+from server.settings import MIN_PASSWORD_LENGTH
 
 
 class User(Model):

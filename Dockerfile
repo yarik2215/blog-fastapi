@@ -6,16 +6,11 @@ WORKDIR /code
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
-
-# install dependencies
 RUN pip install --upgrade pip
-# RUN pip install pipenv
-# COPY ./Pipfile.lock .
-# RUN pipenv install --ignore-pipfile
-COPY ./requirements.txt .
-RUN pip install -r requirements.txt
-
+RUN pip install pipenv
 # copy project
-WORKDIR /server
-COPY . .
+COPY . /app
 
+WORKDIR /app
+# install dependencies
+RUN pipenv install --system --ignore-pipfile

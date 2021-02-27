@@ -5,9 +5,9 @@ from odmantic.bson import ObjectId
 from fastapi_jwt_auth import AuthJWT
 from pydantic.utils import Obj
 
-from ..models.post import Like, PostCreate, PostUpdate, Post
-from ..models.user import User
-from ..settings import engine
+from server.models.post import Like, PostCreate, PostUpdate, Post
+from server.models.user import User
+from server.settings import engine
 from .dependencies import get_authorized_user
 from server.routers import dependencies
 

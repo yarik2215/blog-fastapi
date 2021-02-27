@@ -3,8 +3,8 @@ from fastapi import Depends, HTTPException
 from odmantic import ObjectId
 from bson.objectid import ObjectId as BsonId
 from fastapi_jwt_auth import AuthJWT
-from ..models.user import User
-from ..settings import engine
+from server.models.user import User
+from server.settings import engine
 
 async def get_authorized_user(Authorize: AuthJWT = Depends()) -> User:
     Authorize.jwt_required()

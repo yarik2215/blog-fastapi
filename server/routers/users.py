@@ -3,8 +3,8 @@ from fastapi import APIRouter, HTTPException, Depends
 from odmantic.bson import ObjectId
 from fastapi_jwt_auth import AuthJWT
 
-from ..models.user import User, UserCreate, UserInfo, UserLogin
-from ..settings import engine
+from server.models.user import User, UserCreate, UserInfo, UserLogin
+from server.settings import engine
 from .dependencies import get_authorized_user
 
 

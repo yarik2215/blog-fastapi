@@ -3,9 +3,9 @@ import datetime as dt
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from ..settings import engine
-from ..models.post import Post
-from ..models.user import User
+from server.settings import engine
+from server.models.post import Post
+from server.models.user import User
 from .dependencies import get_admin_user
 
 

@@ -8,7 +8,7 @@ services:
     command: uvicorn server.main:app --reload --workers 1 --host 0.0.0.0 --port 8000
     # command: 
     volumes:
-      - ./server/:/app/
+      - ./:/app/
     ports:
       - 8000:8000
     env_file:
@@ -27,6 +27,8 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: root
+    networks:
+      - webnet
     expose:
       - 27017
 
