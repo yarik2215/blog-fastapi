@@ -1,6 +1,7 @@
-from unittest import TestCase
 import asyncio
 import os
+from typing import List
+from unittest import TestCase
 from fastapi.testclient import TestClient
 from fastapi_jwt_auth import AuthJWT
 
@@ -10,8 +11,8 @@ os.environ['DATABASE'] = 'test'
 from server.settings import engine
 from server.main import app
 from server.models.user import User, UserInfo
+from server.models.post import Post, Like
 
-client = TestClient(app)
 
 loop = asyncio.get_event_loop()
 
@@ -22,21 +23,28 @@ async def create_user(email : str = 'test@mail.com', username : str = 'test', pa
     return user
 
 
-def login_user(user: User) -> str:
+async def create_post(owner: User, title: str = 'post', text: str = 'some text', likes: List[Like] = []):
+    post = Post(owner=owner.id, title=title, text=text, likes=likes)
+    post = await engine.save(post)
+    return post
+
+
+def login_user(client: TestClient, user: User) -> None:
     token = AuthJWT().create_access_token(subject=str(user.id))
-    return token
+    client.headers['Authorization'] = f'Bearer {token}'
 
 
 class UserRouterTest(TestCase):
 
     def setUp(self) -> None:
         self.user = loop.run_until_complete(create_user())
+        self.client = TestClient(app)
 
     def tearDown(self) -> None:
         engine.client.drop_database('test')
 
     def test_ping_200_ok(self) -> None:
-        response = client.get('/ping')
+        response = self.client.get('/ping')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), 'pong')
 
@@ -46,7 +54,7 @@ class UserRouterTest(TestCase):
             'username': 'test2',
             'password': 'test'
         }
-        response = client.post(
+        response = self.client.post(
             '/api/users/register',
             json = user_data,
         )
@@ -58,7 +66,7 @@ class UserRouterTest(TestCase):
             'username': 'test2',
             'password': 't'
         }
-        response = client.post(
+        response = self.client.post(
             '/api/users/register',
             json = user_data,
         )
@@ -71,7 +79,7 @@ class UserRouterTest(TestCase):
             'username': 'test2',
             'password': 'test'
         }
-        response = client.post(
+        response = self.client.post(
             '/api/users/register',
             json = user_data,
         )
@@ -83,7 +91,7 @@ class UserRouterTest(TestCase):
             'username': 'test',
             'password': 'test'
         }
-        response = client.post(
+        response = self.client.post(
             '/api/users/register',
             json = user_data,
         )
@@ -94,7 +102,7 @@ class UserRouterTest(TestCase):
             'email': 'test@mail.com',
             'password': 'test',
         }
-        response = client.post(
+        response = self.client.post(
             '/api/users/login',
             json = login_data,
         )
@@ -106,51 +114,52 @@ class UserRouterTest(TestCase):
             'email': 'test@mail.com',
             'password': 'wrongpass',
         }
-        response = client.post(
+        response = self.client.post(
             '/api/users/login',
             json = login_data,
         )
         self.assertEqual(response.status_code, 400)
         
     def test_list_users_200_ok(self):
-        response = client.get(
+        login_user(self.client, self.user)
+        response = self.client.get(
             '/api/users/',
         )
         self.assertEqual(response.status_code, 200)
         
     def test_get_user_by_username_200_ok(self):
-        response = client.get(
+        login_user(self.client, self.user)
+        response = self.client.get(
             f'/api/users/{self.user.username}',
         )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(UserInfo(**response.json()), UserInfo(**self.user.dict()))
+        self.assertEqual(response.json()['id'], str(self.user.id))
         
     def test_get_user_by_username_404_not_found(self):
-        response = client.get(
+        login_user(self.client, self.user)
+        response = self.client.get(
             '/api/users/uknown',
         )
         self.assertEqual(response.status_code, 404)
         
     def test_delete_user_401_not_authorized(self):
-        response = client.delete(
+        response = self.client.delete(
             f'/api/users/{self.user.username}',
         )
         self.assertEqual(response.status_code, 401)
 
     def test_delete_user_403_no_permission(self):
         user = loop.run_until_complete(create_user('test2@mail.com', 'test2'))
-        token = login_user(user)
-        response = client.delete(
+        login_user(self.client, user)
+        response = self.client.delete(
             f'/api/users/{self.user.username}',
-            headers = {'Authorization': f'Bearer {token}'}
         )
         self.assertEqual(response.status_code, 403)
 
     def test_delete_user_200_ok(self):
-        token = login_user(self.user)
-        response = client.delete(
+        login_user(self.client, self.user)
+        response = self.client.delete(
             f'/api/users/{self.user.username}',
-            headers = {'Authorization': f'Bearer {token}'}
         )
         self.assertEqual(response.status_code, 200)
         user = loop.run_until_complete(
@@ -159,3 +168,185 @@ class UserRouterTest(TestCase):
         self.assertEqual(user.deleted, True)
 
 
+class PostRouterTest(TestCase):
+
+    def setUp(self) -> None:
+        self.user = loop.run_until_complete(create_user())
+        self.post1 = loop.run_until_complete(create_post(self.user, 'post1'))
+        self.post2 = loop.run_until_complete(
+            create_post(self.user, 'post2', likes=[Like(user_id=self.user.id)])
+        )
+        self.client = TestClient(app)
+
+    def tearDown(self) -> None:
+        engine.client.drop_database('test')
+
+    def test_list_posts_200_ok(self):
+        login_user(self.client, self.user)
+        response = self.client.get(
+            '/api/posts/'
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()), 2)
+
+    def test_list_posts_401_not_authorized(self):
+        response = self.client.get(
+            '/api/posts/'
+        )
+        self.assertEqual(response.status_code, 401)
+
+    def test_get_post_by_id_200_ok(self):
+        login_user(self.client, self.user)
+        response = self.client.get(
+            f'/api/posts/{self.post1.id}'
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['id'], str(self.post1.id))
+            
+
+    def test_get_post_by_id_401_not_authorized(self):
+        response = self.client.get(
+            f'/api/posts/{self.post1.id}'
+        )
+        self.assertEqual(response.status_code, 401)
+
+    def test_create_post_200_ok(self):
+        login_user(self.client, self.user)
+        post_data = {
+            'title': 'new post',
+            'text': 'Some text',
+        }
+        response = self.client.post(
+            '/api/posts/',
+            json = post_data,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['owner'], str(self.user.id))
+
+    def test_create_post_401_not_authorized(self):
+        post_data = {
+            'title': 'new post',
+            'text': 'Some text',
+        }
+        response = self.client.post(
+            '/api/posts/',
+            json = post_data,
+        )
+        self.assertEqual(response.status_code, 401)
+        
+    def test_update_post_200_ok(self):
+        login_user(self.client, self.user)
+        update_data = {
+            'title': 'new title',
+            'text': 'new text',
+        }
+        response = self.client.put(
+            f'/api/posts/{self.post1.id}',
+            json = update_data,
+        )
+        resp_data = response.json()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(resp_data['title'], update_data['title'])
+        self.assertEqual(resp_data['text'], update_data['text'])
+        self.assertEqual(resp_data['id'], str(self.post1.id))
+
+    def test_partial_update_post_200_ok(self):
+        login_user(self.client, self.user)
+        update_data = {
+            'title': 'new title',
+        }
+        response = self.client.put(
+            f'/api/posts/{self.post1.id}',
+            json = update_data,
+        )
+        resp_data = response.json()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(resp_data['title'], update_data['title'])
+        self.assertEqual(resp_data['id'], str(self.post1.id))
+
+    def test_update_post_401_not_authorized(self):
+        update_data = {
+            'title': 'new title',
+            'text': 'new text',
+        }
+        response = self.client.put(
+            f'/api/posts/{self.post1.id}',
+            json = update_data,
+        )
+        self.assertEqual(response.status_code, 401)
+
+    def test_update_post_403_no_permission(self):
+        user = loop.run_until_complete(create_user('noname@mail.com', 'noname'))
+        login_user(self.client, user)
+        update_data = {
+            'title': 'new title',
+            'text': 'new text',
+        }
+        response = self.client.put(
+            f'/api/posts/{self.post1.id}',
+            json = update_data,
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_delete_post_204_no_data(self):
+        login_user(self.client, self.user)
+        response = self.client.delete(
+            f'/api/posts/{self.post1.id}',
+        )
+        post = loop.run_until_complete(
+            engine.find_one(Post, Post.id == self.post1.id)
+        )
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(post, None)
+        
+    def test_delete_post_403_no_permission(self):
+        user = loop.run_until_complete(create_user('noname@mail.com', 'noname'))
+        login_user(self.client, user)
+        response = self.client.delete(
+            f'/api/posts/{self.post1.id}',
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_like_post_200_ok(self):
+        login_user(self.client, self.user)
+        response = self.client.post(
+            f'/api/posts/{self.post1.id}/like'
+        )
+        post = loop.run_until_complete(
+            engine.find_one(Post, Post.id == self.post1.id)
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(post.likes), 1)
+
+    def test_like_post_twice_400_bad_request(self):
+        login_user(self.client, self.user)
+        response = self.client.post(
+            f'/api/posts/{self.post2.id}/like'
+        )
+        post = loop.run_until_complete(
+            engine.find_one(Post, Post.id == self.post2.id)
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(len(post.likes), 1)
+
+    def test_post_unlike_200_ok(self):
+        login_user(self.client, self.user)
+        response = self.client.post(
+            f'/api/posts/{self.post2.id}/unlike'
+        )
+        post = loop.run_until_complete(
+            engine.find_one(Post, Post.id == self.post2.id)
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(post.likes), 0)
+
+    def test_post_unlike_not_liked_post_400_bad_request(self):
+        login_user(self.client, self.user)
+        response = self.client.post(
+            f'/api/posts/{self.post1.id}/unlike'
+        )
+        post = loop.run_until_complete(
+            engine.find_one(Post, Post.id == self.post1.id)
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(len(post.likes), 0)

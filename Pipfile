@@ -19,5 +19,5 @@ python_version = "3.8"
 
 [scripts]
 dev = "uvicorn server.main:app --reload"
-test = "python -m unittest discover ./server/test"
+test = "python -m unittest discover ./server/test -v"
 create_superuser = "python -m server.scripts.create_superuser"
