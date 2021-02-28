@@ -49,11 +49,14 @@ async def post_detail(post : Post = Depends(get_post_by_id), Authorize: AuthJWT 
 
 @router.put('/{post_id}', response_model=Post)
 async def post_update(*, post : Post = Depends(get_post_only_owner), data: PostUpdate):
-    updated_data = {**post.dict(), **data.dict()}
+    updated_data = {**post.dict(), **data.dict(exclude_unset=True)}
     post = Post(**updated_data)
     await engine.save(post)
     return post
 
+@router.delete('/{post_id}', status_code=204)
+async def post_delete(*, post : Post = Depends(get_post_only_owner)):
+    await engine.delete(post)
 
 @router.post('/{post_id}/like', response_model=Post)
 async def post_like(*, 

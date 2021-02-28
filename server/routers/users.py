@@ -11,13 +11,13 @@ from .dependencies import get_authorized_user
 router = APIRouter()
 
 
-@router.get('/', response_model=List[UserInfo])
+@router.get('/', response_model=List[UserInfo], dependencies=[Depends(get_authorized_user)])
 async def list_users(Authorize: AuthJWT = Depends()):
     users = await engine.find(User)
     return users
 
 
-@router.get('/{username}', response_model=UserInfo)
+@router.get('/{username}', response_model=UserInfo, dependencies=[Depends(get_authorized_user)])
 async def read_user(username: str):
     user = await engine.find_one(User, User.username == username)
     if user is None:
@@ -52,6 +52,8 @@ async def register_user(user: UserCreate, Authorize: AuthJWT = Depends()):
 @router.post('/login')
 async def login_user(data: UserLogin, Authorize: AuthJWT = Depends()):
     user = await engine.find_one(User, (User.email == data.email) & (User.deleted == False))
+    if not user:
+        raise HTTPException(404)
     if not user.verify_pswd(data.password):
         raise HTTPException(400, detail='Wrong login data')
     access_token = Authorize.create_access_token(subject=str(user.id))
