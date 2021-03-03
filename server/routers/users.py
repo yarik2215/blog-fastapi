@@ -5,16 +5,18 @@ from fastapi_jwt_auth import AuthJWT
 
 from server.models.user import User, UserCreate, UserInfo, UserLogin
 from server.settings import engine
-from .dependencies import get_authorized_user
+from .dependencies import get_authorized_user, Selector, get_selector
 
 
 router = APIRouter()
 
 
-@router.get('/', response_model=List[UserInfo], dependencies=[Depends(get_authorized_user)])
-async def list_users(Authorize: AuthJWT = Depends()):
-    users = await engine.find(User)
-    return users
+@router.get('/', dependencies=[Depends(get_authorized_user)])
+async def list_users(
+    selector: Selector = Depends(get_selector(User, User.username, User.email))
+):
+    users = await selector.get_objects()
+    return {'count': selector.count, 'users': users}
 
 
 @router.get('/{username}', response_model=UserInfo, dependencies=[Depends(get_authorized_user)])

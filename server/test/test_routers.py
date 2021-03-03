@@ -38,6 +38,7 @@ class UserRouterTest(TestCase):
 
     def setUp(self) -> None:
         self.user = loop.run_until_complete(create_user())
+        self.dummy_user1 = loop.run_until_complete(create_user('dummy1@test.com', 'dummy1'))
         self.client = TestClient(app)
 
     def tearDown(self) -> None:
@@ -126,6 +127,7 @@ class UserRouterTest(TestCase):
             '/api/users/',
         )
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['count'], 2)
         
     def test_get_user_by_username_200_ok(self):
         login_user(self.client, self.user)
@@ -187,7 +189,7 @@ class PostRouterTest(TestCase):
             '/api/posts/'
         )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.json()), 2)
+        self.assertEqual(response.json()['count'], 2)
 
     def test_list_posts_401_not_authorized(self):
         response = self.client.get(

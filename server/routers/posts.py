@@ -8,8 +8,8 @@ from pydantic.utils import Obj
 from server.models.post import Like, PostCreate, PostUpdate, Post
 from server.models.user import User
 from server.settings import engine
-from .dependencies import get_authorized_user
-from server.routers import dependencies
+from .dependencies import get_authorized_user, Selector, get_selector
+
 
 router = APIRouter()
 
@@ -30,10 +30,10 @@ async def get_post_only_owner(
     return post
 
 
-@router.get('/', response_model=List[Post], dependencies=[Depends(get_authorized_user)])
-async def post_list():
-    posts = await engine.find(Post)
-    return posts
+@router.get('/', dependencies=[Depends(get_authorized_user)])
+async def post_list(selector: Selector = Depends(get_selector(Post, Post.title))):
+    posts = await selector.get_objects()
+    return {'count': selector.count, 'posts': posts}
 
 
 @router.post('/', response_model=Post)
