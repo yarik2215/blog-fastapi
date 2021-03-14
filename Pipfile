@@ -11,6 +11,7 @@ odmantic = "*"
 pydantic = {extras = ["email"], version = "*"}
 passlib = {extras = ["bcrypt"], version = "*"}
 requests = "*"
+coverage = "*"
 
 [dev-packages]
 
@@ -21,3 +22,4 @@ python_version = "3.8"
 dev = "uvicorn server.main:app --reload"
 test = "python -m unittest discover ./server/test -v"
 create_superuser = "python -m server.scripts.create_superuser"
+cov = "./run_coverage.sh .sh"
