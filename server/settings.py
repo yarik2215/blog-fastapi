@@ -23,6 +23,7 @@ engine = AIOEngine(client, database=DATABASE)
 class Settings(BaseModel):
     authjwt_secret_key: str = SECRET_KEY
     authjwt_access_token_expires: timedelta = timedelta(days = 1)
+    authjwt_refresh_token_expires: timedelta = timedelta(days=30)
 
 # callback to get your configuration
 @AuthJWT.load_config

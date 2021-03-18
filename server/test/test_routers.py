@@ -12,6 +12,7 @@ from server.settings import engine
 from server.main import app
 from server.models.user import User, UserInfo
 from server.models.post import Post, Like
+from server.utils.security import create_tokens, JwtTokenPair
 
 
 loop = asyncio.get_event_loop()
@@ -29,9 +30,10 @@ async def create_post(owner: User, title: str = 'post', text: str = 'some text',
     return post
 
 
-def login_user(client: TestClient, user: User) -> None:
-    token = AuthJWT().create_access_token(subject=str(user.id))
-    client.headers['Authorization'] = f'Bearer {token}'
+def login_user(client: TestClient, user: User) -> JwtTokenPair:
+    tokens = create_tokens(AuthJWT(), str(user.id), is_admin=user.super_user)
+    client.headers['Authorization'] = f'Bearer {tokens.access_token}'
+    return tokens
 
 
 class UserRouterTest(TestCase):
@@ -107,8 +109,10 @@ class UserRouterTest(TestCase):
             '/api/users/login',
             json = login_data,
         )
+        response_data = response.json()
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.json().get('access_token'))
+        self.assertTrue(response_data['access_token'])
+        self.assertTrue(response_data['refresh_token'])
 
     def test_login_400_wrong_credentials(self) -> None:
         login_data = {
@@ -120,6 +124,15 @@ class UserRouterTest(TestCase):
             json = login_data,
         )
         self.assertEqual(response.status_code, 400)
+        
+    def test_refresh_token_200_ok(self) -> None:
+        tokens = login_user(self.client, self.user)
+        self.client.headers['Authorization'] = f'Bearer {tokens.refresh_token}'
+        response = self.client.get('/api/users/refresh')
+        response_data = response.json()
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response_data['access_token'])
+        self.assertTrue(response_data['refresh_token'])
         
     def test_list_users_200_ok(self):
         login_user(self.client, self.user)
@@ -144,11 +157,11 @@ class UserRouterTest(TestCase):
         )
         self.assertEqual(response.status_code, 404)
         
-    def test_delete_user_401_not_authorized(self):
+    def test_delete_user_403_not_authorized(self):
         response = self.client.delete(
             f'/api/users/{self.user.username}',
         )
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.status_code, 403)
 
     def test_delete_user_403_no_permission(self):
         user = loop.run_until_complete(create_user('test2@mail.com', 'test2'))
@@ -191,11 +204,11 @@ class PostRouterTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['count'], 2)
 
-    def test_list_posts_401_not_authorized(self):
+    def test_list_posts_403_not_authorized(self):
         response = self.client.get(
             '/api/posts/'
         )
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.status_code, 403)
 
     def test_get_post_by_id_200_ok(self):
         login_user(self.client, self.user)
@@ -206,11 +219,11 @@ class PostRouterTest(TestCase):
         self.assertEqual(response.json()['id'], str(self.post1.id))
             
 
-    def test_get_post_by_id_401_not_authorized(self):
+    def test_get_post_by_id_403_not_authorized(self):
         response = self.client.get(
             f'/api/posts/{self.post1.id}'
         )
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.status_code, 403)
 
     def test_create_post_200_ok(self):
         login_user(self.client, self.user)
@@ -225,7 +238,7 @@ class PostRouterTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['owner'], str(self.user.id))
 
-    def test_create_post_401_not_authorized(self):
+    def test_create_post_403_not_authorized(self):
         post_data = {
             'title': 'new post',
             'text': 'Some text',
@@ -234,7 +247,7 @@ class PostRouterTest(TestCase):
             '/api/posts/',
             json = post_data,
         )
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.status_code, 403)
         
     def test_update_post_200_ok(self):
         login_user(self.client, self.user)
@@ -266,7 +279,7 @@ class PostRouterTest(TestCase):
         self.assertEqual(resp_data['title'], update_data['title'])
         self.assertEqual(resp_data['id'], str(self.post1.id))
 
-    def test_update_post_401_not_authorized(self):
+    def test_update_post_403_not_authorized(self):
         update_data = {
             'title': 'new title',
             'text': 'new text',
@@ -275,7 +288,7 @@ class PostRouterTest(TestCase):
             f'/api/posts/{self.post1.id}',
             json = update_data,
         )
-        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.status_code, 403)
 
     def test_update_post_403_no_permission(self):
         user = loop.run_until_complete(create_user('noname@mail.com', 'noname'))

@@ -1,20 +1,20 @@
 from typing import List, Optional, Union
 
-
 from server.models.user import User
 from fastapi import Depends, HTTPException
+from fastapi.security import HTTPBearer
 from odmantic import ObjectId
 from bson.objectid import ObjectId as BsonId
 from fastapi_jwt_auth import AuthJWT
 from server.models.user import User
 from server.settings import engine
-from odmantic import Model, query
+from odmantic import Model
 from odmantic.query import QueryExpression, SortExpression, match
 from odmantic.engine import AIOCursor
 from odmantic.field import FieldProxy
 
 
-async def get_authorized_user(Authorize: AuthJWT = Depends()) -> User:
+async def get_authorized_user(Authorize: AuthJWT = Depends(), dummy = Depends(HTTPBearer())) -> User:
     Authorize.jwt_required()
     user_id = BsonId(Authorize.get_jwt_subject())
     user = await engine.find_one(User, User.id == user_id)
@@ -30,6 +30,13 @@ async def get_admin_user(user_id: ObjectId = Depends(get_authorized_user)) -> Us
     if not user.super_user:
         raise HTTPException(403)
     return user
+
+
+async def allow_only_admin(Authorize: AuthJWT = Depends(), dummy = Depends(HTTPBearer())) -> None:
+    Authorize.jwt_required()
+    raw_jwt = Authorize.get_raw_jwt()
+    if not raw_jwt.get('is_admin'):
+        raise HTTPException(403)
 
 
 class Selector:

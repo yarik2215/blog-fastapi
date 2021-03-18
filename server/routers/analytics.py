@@ -6,12 +6,13 @@ from pydantic import BaseModel
 from server.settings import engine
 from server.models.post import Post
 from server.models.user import User
-from .dependencies import get_admin_user
+from .dependencies import allow_only_admin
 
 
 router = APIRouter(
-    dependencies=[Depends(get_admin_user)]
+    dependencies=[Depends(allow_only_admin)]
 )
+
 
 class DateFilter():
     date_from: Optional[dt.datetime]
