@@ -22,3 +22,8 @@ For creating a superuser run `pipenv run create_superuser` and follow the steps,
 ## Testing
 For testing run `pipenv run test` localy or `python -m unittest discover ./server/test` in docker container shell
 > It will  it will create database `test` for testing purpose
+
+
+## Bot
+Bot is used for demonstrating service functionality according to rules defined in `bot-config.json`
+For running bot use `pipenv run bot` or `python -m bot.main` 
