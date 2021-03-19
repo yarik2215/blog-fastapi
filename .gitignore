@@ -142,3 +142,7 @@ cython_debug/
 
 # VS Code
 .vscode
+
+
+# bot config
+bot-config.json
