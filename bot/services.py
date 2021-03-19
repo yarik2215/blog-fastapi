@@ -1,10 +1,17 @@
 import random
 from typing import List, Tuple
-
+from abc import ABC, abstractmethod
 from pydantic.main import BaseModel
 from server.models.user import UserCreate, UserLogin
 from server.models.post import Like, PostCreate, Post
 from server.utils.security import JwtTokenPair
+
+
+class DataCreatorInterface(ABC):
+    
+    @abstractmethod
+    def get_object(self, *args, **kwargs) -> BaseModel:
+        NotImplemented
 
 
 # __________________ Users _____________________
@@ -18,15 +25,10 @@ class UserCreatorBase:
         NotImplemented
 
 
-class UserRandomizerBase:
-    def get_random_user(self) -> UserCreate:
-        NotImplemented
-
-
 class UserGenerator:
-    def __init__(self, creator: UserCreatorBase, randomizer: UserRandomizerBase) -> None:
+    def __init__(self, creator: UserCreatorBase, data_creator: DataCreatorInterface) -> None:
         self._creator = creator
-        self._randomizer = randomizer
+        self._data_creator = data_creator
         self._users: List[UserData] = []
 
     @property
@@ -35,7 +37,7 @@ class UserGenerator:
     
     def generate(self, quantity: int) -> Tuple[UserData]:
         for _ in range(0, quantity):
-            user_data = self._randomizer.get_random_user()
+            user_data = self._data_creator.get_object()
             user = self._creator.create_user(user_data)
             if user:
                 self._users.append(user)
@@ -50,15 +52,10 @@ class PostCreatorBase:
         NotImplemented
 
 
-class PostRandomizerBase:
-    def get_random_post(self, post_title_mixin: str) -> PostCreate:
-        NotImplemented
-
-
 class PostGenerator:
-    def __init__(self, creator: PostCreatorBase, randomizer: PostRandomizerBase) -> None:
+    def __init__(self, creator: PostCreatorBase, data_creator: DataCreatorInterface) -> None:
         self._creator = creator
-        self._randomizer = randomizer
+        self._data_creator = data_creator
         self._posts : List[Post] = []
 
     @property
@@ -67,7 +64,7 @@ class PostGenerator:
 
     def generate(self, quantity: int, user: UserData) -> Tuple[Post]:
         for i in range(0, quantity):
-            post_data = self._randomizer.get_random_post(
+            post_data = self._data_creator.get_object(
                 f' #{i} by {user.username}'
             )
             post = self._creator.create_post(user, post_data)

@@ -1,12 +1,13 @@
-from .services import UserCreate, UserRandomizerBase, PostCreate, PostRandomizerBase
+from .services import UserCreate, PostCreate, DataCreatorInterface
 from datetime import datetime
 
-class TimeUserRandomizer(UserRandomizerBase):
+
+class TimeUserRandomizer(DataCreatorInterface):
     def __init__(self) -> None:
         super().__init__()
         self._last_user_number = 0
     
-    def get_random_user(self) -> UserCreate:
+    def get_object(self) -> UserCreate:
         time_mixin = f'{datetime.now().timestamp()}{self._last_user_number}'
         user = UserCreate(
             email = f'user{time_mixin}@bot.com',
@@ -16,9 +17,10 @@ class TimeUserRandomizer(UserRandomizerBase):
         self._last_user_number += 1
         return user
 
-class SimplePostRandomizer(PostRandomizerBase):
+
+class SimplePostRandomizer(DataCreatorInterface):
     
-    def get_random_post(self, post_title_mixin: str) -> PostCreate:
+    def get_object(self, post_title_mixin: str) -> PostCreate:
         post = PostCreate(
             title = f'Post{post_title_mixin}',
             text = 'Some text here.'
