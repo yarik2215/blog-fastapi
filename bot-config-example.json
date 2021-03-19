@@ -1,0 +1,6 @@
+{
+    "api_url": "http://test.io:8000/api",
+    "number_of_users": 3,
+    "max_posts_per_user": 4,
+    "max_likes_per_user": 3
+}
