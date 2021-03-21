@@ -7,7 +7,7 @@ class TimeUserRandomizer(DataCreatorInterface):
         super().__init__()
         self._last_user_number = 0
     
-    def get_object(self) -> UserCreate:
+    def get_data(self, *args, **kwargs) -> UserCreate:
         time_mixin = f'{datetime.now().timestamp()}{self._last_user_number}'
         user = UserCreate(
             email = f'user{time_mixin}@bot.com',
@@ -20,7 +20,7 @@ class TimeUserRandomizer(DataCreatorInterface):
 
 class SimplePostRandomizer(DataCreatorInterface):
     
-    def get_object(self, post_title_mixin: str) -> PostCreate:
+    def get_data(self, post_title_mixin: str, *args, **kwargs) -> PostCreate:
         post = PostCreate(
             title = f'Post{post_title_mixin}',
             text = 'Some text here.'
